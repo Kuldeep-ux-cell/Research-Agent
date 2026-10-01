@@ -1,4 +1,4 @@
-# Research Agent
+# Research Agent (initial commit)
 
 Describe what you are working on and the problem you face; Research Agent finds related studies from
 OpenAlex (250M+ papers), scores how relevant each one is, and shows exactly how it got there.
