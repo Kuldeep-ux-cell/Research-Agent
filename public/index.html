@@ -1,0 +1,387 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Research Agent</title>
+<style>
+  :root {
+    --bg: #f7f7f5; --panel: #ffffff; --ink: #1c1c1a; --muted: #6b6b66; --line: #e4e3de;
+    --accent: #2f5bd3; --accent-soft: #e8eefc; --good: #1f7a4d; --good-soft: #e3f3ea;
+    --warn: #a3401c; --warn-soft: #fbe9e2; --gold: #8a6100; --gold-soft: #fbf1d6;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg: #141413; --panel: #1d1d1b; --ink: #ecebe6; --muted: #9b9a94; --line: #2e2e2b;
+      --accent: #7f9cf5; --accent-soft: #232b45; --good: #6cc59a; --good-soft: #1b3127;
+      --warn: #f09a77; --warn-soft: #3a231a; --gold: #e3bb5c; --gold-soft: #352b14;
+    }
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--bg); color: var(--ink); font: 15px/1.5 system-ui, -apple-system, "Segoe UI", sans-serif; }
+  header { padding: 20px 16px 12px; max-width: 1200px; margin: 0 auto; }
+  h1 { margin: 0 0 4px; font-size: 22px; letter-spacing: -0.01em; }
+  .sub { color: var(--muted); margin: 0; }
+  form { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 14px; }
+  input, select, button { font: inherit; color: inherit; background: var(--panel); border: 1px solid var(--line); border-radius: 8px; padding: 8px 10px; }
+  input[type=search] { flex: 1 1 260px; }
+  button { cursor: pointer; }
+  button.primary { background: var(--accent); border-color: var(--accent); color: #fff; }
+  button:disabled { opacity: .5; cursor: default; }
+  label.chk { display: flex; align-items: center; gap: 6px; color: var(--muted); }
+  main { max-width: 1200px; margin: 0 auto; padding: 0 16px 40px; display: grid; grid-template-columns: minmax(0, 1fr) 340px; gap: 20px; }
+  @media (max-width: 900px) { main { grid-template-columns: minmax(0, 1fr); } aside { order: -1; } }
+  .meta { display: flex; justify-content: space-between; flex-wrap: wrap; gap: 8px; color: var(--muted); font-size: 13px; margin: 6px 0 12px; }
+  .card { background: var(--panel); border: 1px solid var(--line); border-radius: 12px; padding: 14px 16px; margin-bottom: 12px; }
+  .badges { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 6px; }
+  .b { font-size: 11.5px; padding: 2px 8px; border-radius: 99px; background: var(--accent-soft); color: var(--accent); }
+  .b.good { background: var(--good-soft); color: var(--good); }
+  .b.gold { background: var(--gold-soft); color: var(--gold); }
+  .b.warn { background: var(--warn-soft); color: var(--warn); }
+  .card h3 { margin: 0 0 4px; font-size: 16.5px; line-height: 1.35; }
+  .authors, .venue { color: var(--muted); font-size: 13px; }
+  .stats { display: flex; align-items: center; gap: 14px; margin: 8px 0; font-size: 13px; }
+  .abs { font-size: 14px; margin: 6px 0; }
+  .abs.clamp { display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden; }
+  .more { background: none; border: 0; padding: 0; color: var(--accent); font-size: 13px; }
+  .kw { display: flex; flex-wrap: wrap; gap: 6px; margin: 8px 0; }
+  .kw span { font-size: 12px; color: var(--muted); }
+  .links { display: flex; gap: 12px; font-size: 13px; }
+  .links a { color: var(--accent); text-decoration: none; }
+  aside .card h4 { margin: 0 0 10px; font-size: 13px; text-transform: uppercase; letter-spacing: .05em; color: var(--muted); }
+  .bar-row { display: grid; grid-template-columns: 1fr auto; gap: 2px 8px; font-size: 13px; margin-bottom: 6px; }
+  .bar-row .bar { grid-column: 1 / -1; height: 6px; border-radius: 3px; background: var(--accent-soft); overflow: hidden; }
+  .bar-row .bar i { display: block; height: 100%; background: var(--accent); border-radius: 3px; }
+  .name { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .years { display: flex; align-items: flex-end; gap: 2px; height: 90px; }
+  .years div { flex: 1; background: var(--accent); border-radius: 2px 2px 0 0; min-height: 1px; }
+  .yr-axis { display: flex; justify-content: space-between; color: var(--muted); font-size: 11px; margin-top: 4px; }
+  .brief { white-space: pre-wrap; font-size: 14px; }
+  .cost table { width: 100%; border-collapse: collapse; font-size: 13px; }
+  .cost td { padding: 3px 0; border-bottom: 1px solid var(--line); }
+  .cost td:last-child { text-align: right; font-variant-numeric: tabular-nums; }
+  .empty, .err { color: var(--muted); padding: 30px 0; text-align: center; }
+  .err { color: var(--warn); }
+  #loadMore { width: 100%; }
+  [hidden] { display: none !important; }
+  .tabs { display: flex; gap: 4px; margin-top: 14px; border-bottom: 1px solid var(--line); }
+  .tabs button { border: 0; border-bottom: 2px solid transparent; border-radius: 0; background: none; color: var(--muted); padding: 8px 12px; }
+  .tabs button.on { color: var(--ink); border-bottom-color: var(--accent); }
+  #mf { flex-direction: column; }
+  textarea { font: inherit; color: inherit; background: var(--panel); border: 1px solid var(--line); border-radius: 8px; padding: 10px; width: 100%; resize: vertical; }
+  .row { display: flex; flex-wrap: wrap; gap: 8px; justify-content: space-between; align-items: center; }
+  .small { font-size: 13px; color: var(--muted); }
+  .match { display: grid; grid-template-columns: 64px minmax(0, 1fr); gap: 14px; }
+  .score { text-align: center; }
+  .score b { display: block; font-size: 26px; line-height: 1; font-variant-numeric: tabular-nums; }
+  .score span { font-size: 11px; color: var(--muted); }
+  .score.hi b { color: var(--good); } .score.mid b { color: var(--accent); } .score.lo b { color: var(--muted); }
+  .parts { display: grid; grid-template-columns: auto 1fr auto; gap: 3px 8px; align-items: center; font-size: 12px; color: var(--muted); margin: 8px 0; max-width: 360px; }
+  .parts .bar { height: 5px; border-radius: 3px; background: var(--accent-soft); overflow: hidden; }
+  .parts .bar i { display: block; height: 100%; background: var(--accent); }
+  .reason { font-size: 14px; border-left: 3px solid var(--accent); padding: 2px 0 2px 10px; margin: 8px 0; }
+  .chips { display: flex; flex-wrap: wrap; gap: 6px; margin: 6px 0; }
+  .chips code { font-size: 12px; background: var(--accent-soft); color: var(--accent); padding: 2px 8px; border-radius: 6px; }
+  .trace { margin: 0; padding-left: 18px; font-size: 13px; }
+  .trace li { margin-bottom: 10px; }
+  .trace .m { color: var(--muted); }
+  @media (max-width: 900px) { #matchView aside { order: 1; } }
+  h5 { margin: 12px 0 6px; font-size: 12px; text-transform: uppercase; letter-spacing: .05em; color: var(--muted); }
+  .map { border-collapse: collapse; font-size: 14px; }
+  .map td { padding: 3px 8px 3px 0; vertical-align: top; }
+  .map q { font-style: italic; color: var(--muted); }
+  .hyp { margin: 0; padding-left: 18px; font-size: 14px; }
+  .notice { background: var(--gold-soft); color: var(--gold); border-radius: 8px; padding: 8px 10px; font-size: 13px; margin: 0 0 10px; }
+  .evidence { margin: 6px 0; padding: 6px 10px; background: var(--good-soft); border-radius: 8px; font-size: 13px; font-style: italic; }
+  .evidence span { display: block; font-style: normal; font-size: 11.5px; color: var(--good); margin-top: 2px; }
+  .evidence.unverified { background: var(--warn-soft); }
+  .evidence.unverified span { color: var(--warn); }
+</style>
+</head>
+<body>
+<header>
+  <h1>Research Agent</h1>
+  <p class="sub">Search 250M+ papers via OpenAlex, then get insights and an optional AI brief.</p>
+  <nav class="tabs">
+    <button type="button" data-mode="match" class="on">Describe your problem</button>
+    <button type="button" data-mode="search">Keyword search</button>
+  </nav>
+  <form id="mf">
+    <textarea id="problem" rows="4" required placeholder="What are you working on, and what problem are you stuck on?">I'm developing a low-cost filtration system for small municipal wastewater plants. Our sand filters capture larger microplastics but particles under 50 microns pass straight through, and membranes are too expensive and foul quickly. I need methods to remove small microplastics affordably.</textarea>
+    <div class="row">
+      <label class="chk">Published from <input type="date" id="mfrom" value="2018-01-01"></label>
+      <button class="primary" id="mbtn">Find related studies</button>
+    </div>
+  </form>
+  <form id="f" hidden>
+    <input type="search" id="q" placeholder="e.g. microplastics, perovskite solar cells, CRISPR delivery" value="microplastics" required>
+    <input type="date" id="from" value="2024-01-01" title="Published from">
+    <select id="sort">
+      <option value="cited_by_count:desc">Most cited</option>
+      <option value="publication_date:desc">Newest</option>
+      <option value="relevance">Relevance</option>
+    </select>
+    <label class="chk"><input type="checkbox" id="oa"> Open access</label>
+    <button class="primary">Search</button>
+  </form>
+</header>
+
+<main id="matchView">
+  <section>
+    <div id="understood"></div>
+    <div id="mresults"><p class="empty">Describe your work above to find related studies.</p></div>
+  </section>
+  <aside>
+    <div class="card"><h4>How these were found</h4><ol id="trace" class="trace"><li style="color:var(--muted)">The pipeline steps will appear here.</li></ol></div>
+    <div class="card"><h4>How the score works</h4><div id="scoring" class="small"></div></div>
+  </aside>
+</main>
+
+<main id="searchView" hidden>
+  <section>
+    <div class="meta"><span id="count"></span><span id="reqcost"></span></div>
+    <div id="results"><p class="empty">Run a search to see papers.</p></div>
+    <button id="loadMore" hidden>Load more</button>
+  </section>
+
+  <aside>
+    <div class="card" id="briefCard">
+      <h4>AI research brief</h4>
+      <div id="brief" class="brief" style="color:var(--muted)">Summarizes the top 10 results with the LLM.</div>
+      <button id="briefBtn" style="margin-top:10px" disabled>Generate brief</button>
+    </div>
+    <div class="card"><h4>Publications per year</h4><div id="years"></div></div>
+    <div class="card"><h4>Top fields</h4><div id="fields"></div></div>
+    <div class="card"><h4>Top institutions</h4><div id="insts"></div></div>
+    <div class="card"><h4>Top countries</h4><div id="countries"></div></div>
+    <div class="card cost"><h4>Session cost</h4><table id="cost"></table></div>
+  </aside>
+</main>
+
+<script>
+const $ = (id) => document.getElementById(id);
+const esc = (s) => String(s ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+const fmt = (n) => Number(n).toLocaleString();
+const usd = (n) => "$" + (n < 0.01 && n > 0 ? n.toFixed(4) : n.toFixed(3));
+
+let state = { params: null, cursor: null, papers: [] };
+const ledger = { "OpenAlex search": 0, "OpenAlex insights": 0, "AI brief": 0 };
+
+function renderCost() {
+  const total = Object.values(ledger).reduce((a, b) => a + b, 0);
+  $("cost").innerHTML = Object.entries(ledger).map(([k, v]) => `<tr><td>${k}</td><td>${usd(v)}</td></tr>`).join("")
+    + `<tr><td><b>Total</b></td><td><b>${usd(total)}</b></td></tr>`;
+}
+
+function sparkline(trend) {
+  if (!trend?.length) return "";
+  const w = 60, h = 18, max = Math.max(...trend.map((t) => t.cited_by_count), 1);
+  const step = trend.length > 1 ? w / (trend.length - 1) : 0;
+  const pts = trend.map((t, i) => `${(i * step).toFixed(1)},${(h - (t.cited_by_count / max) * (h - 2) - 1).toFixed(1)}`).join(" ");
+  return `<svg width="${w}" height="${h}" aria-hidden="true"><polyline points="${pts}" fill="none" stroke="var(--accent)" stroke-width="1.6"/></svg>`;
+}
+
+function card(p) {
+  const shown = p.authors.slice(0, 4).map((a) => esc(a.name)).join(", ");
+  const extra = p.authors.length > 4 ? `, +${p.authors.length - 4} more` : "";
+  const firstInst = p.authors[0]?.inst ? ` · ${esc(p.authors[0].inst)}${p.authors[0].country ? " (" + esc(p.authors[0].country) + ")" : ""}` : "";
+  const badges = [
+    p.retracted && `<span class="b warn">Retracted</span>`,
+    p.top1pct ? `<span class="b gold">Top 1%</span>` : p.top10pct && `<span class="b gold">Top 10%</span>`,
+    p.oa && `<span class="b good">Open access${p.oaStatus ? " · " + esc(p.oaStatus) : ""}</span>`,
+    p.field && `<span class="b">${esc(p.field)}</span>`,
+  ].filter(Boolean).join("");
+  return `<article class="card">
+    <div class="badges">${badges}</div>
+    <h3>${esc(p.title)}</h3>
+    <div class="authors">${shown}${extra}${firstInst}</div>
+    <div class="venue">${esc(p.journal || p.type || "")}${p.date ? " · " + esc(p.date) : ""}</div>
+    <div class="stats">${sparkline(p.trend)}<span><b>${fmt(p.citations)}</b> citations</span>${p.fwci != null ? `<span>FWCI ${Number(p.fwci).toFixed(1)}</span>` : ""}</div>
+    ${p.abstract ? `<p class="abs clamp">${esc(p.abstract)}</p><button class="more" onclick="this.previousElementSibling.classList.toggle('clamp');this.textContent=this.textContent==='Show more'?'Show less':'Show more'">Show more</button>`
+                 : `<p class="abs" style="color:var(--muted)">No abstract available.</p>`}
+    <div class="kw">${p.keywords.slice(0, 5).map((k) => `<span>#${esc(k)}</span>`).join("")}</div>
+    <div class="links">
+      ${p.pdf ? `<a href="${esc(p.pdf)}" target="_blank" rel="noopener">PDF</a>` : ""}
+      ${p.doi ? `<a href="${esc(p.doi)}" target="_blank" rel="noopener">DOI</a>` : ""}
+      <a href="https://openalex.org/${esc(p.id)}" target="_blank" rel="noopener">OpenAlex</a>
+    </div>
+  </article>`;
+}
+
+function bars(el, rows) {
+  if (!rows.length) { el.innerHTML = `<span style="color:var(--muted)">No data</span>`; return; }
+  const max = Math.max(...rows.map((r) => r.count));
+  el.innerHTML = rows.map((r) => `<div class="bar-row"><span class="name" title="${esc(r.name)}">${esc(r.name)}</span><span>${fmt(r.count)}</span><div class="bar"><i style="width:${(r.count / max) * 100}%"></i></div></div>`).join("");
+}
+
+async function getJSON(url, opts) {
+  const res = await fetch(url, opts);
+  const data = await res.json();
+  if (!res.ok) throw new Error(data.error || res.statusText);
+  return data;
+}
+
+async function search(more = false) {
+  const qs = new URLSearchParams(state.params);
+  if (more) qs.set("cursor", state.cursor);
+  $("loadMore").disabled = true;
+  if (!more) $("results").innerHTML = `<p class="empty">Searching…</p>`;
+  try {
+    const r = await getJSON(`/api/search?${qs}`);
+    state.cursor = r.nextCursor;
+    state.papers = more ? state.papers.concat(r.papers) : r.papers;
+    ledger["OpenAlex search"] += r.cost.openalexUsd; renderCost();
+    $("count").textContent = `${fmt(r.total)} papers`;
+    $("reqcost").textContent = r.cost.cached ? "served from cache · $0" : `this request: ${usd(r.cost.openalexUsd)}`;
+    $("results").innerHTML = state.papers.length ? state.papers.map(card).join("") : `<p class="empty">No papers found.</p>`;
+    $("loadMore").hidden = !state.cursor || !r.papers.length;
+    $("briefBtn").disabled = !window.AI || !state.papers.length;
+  } catch (e) {
+    $("results").innerHTML = `<p class="err">${esc(e.message)}</p>`;
+  } finally { $("loadMore").disabled = false; }
+}
+
+async function insights() {
+  const qs = new URLSearchParams(state.params); qs.delete("sort");
+  ["years", "fields", "insts", "countries"].forEach((id) => $(id).innerHTML = `<span style="color:var(--muted)">Loading…</span>`);
+  try {
+    const r = await getJSON(`/api/insights?${qs}`);
+    ledger["OpenAlex insights"] += r.cost.openalexUsd; renderCost();
+    const max = Math.max(...r.years.map((y) => y.count), 1);
+    $("years").innerHTML = r.years.length
+      ? `<div class="years">${r.years.map((y) => `<div title="${y.year}: ${fmt(y.count)}" style="height:${(y.count / max) * 100}%"></div>`).join("")}</div>
+         <div class="yr-axis"><span>${r.years[0].year}</span><span>${r.years.at(-1).year}</span></div>`
+      : `<span style="color:var(--muted)">No data</span>`;
+    bars($("fields"), r.fields);
+    bars($("insts"), r.institutions);
+    bars($("countries"), r.countries);
+  } catch (e) {
+    $("years").innerHTML = `<span class="err">${esc(e.message)}</span>`;
+  }
+}
+
+$("f").addEventListener("submit", (e) => {
+  e.preventDefault();
+  state.params = { q: $("q").value.trim(), from: $("from").value, sort: $("sort").value, oa: $("oa").checked ? "1" : "0" };
+  $("brief").textContent = "Summarizes the top 10 results with the LLM.";
+  $("brief").style.color = "var(--muted)";
+  search(); insights();
+});
+$("loadMore").addEventListener("click", () => search(true));
+$("briefBtn").addEventListener("click", async () => {
+  $("briefBtn").disabled = true;
+  $("brief").textContent = "Reading abstracts…";
+  try {
+    const r = await getJSON("/api/brief", {
+      method: "POST", headers: { "content-type": "application/json" },
+      body: JSON.stringify({ q: state.params.q, papers: state.papers.slice(0, 10) }),
+    });
+    ledger["AI brief"] += r.cost.claudeUsd; renderCost();
+    $("brief").style.color = "";
+    $("brief").textContent = r.text + `\n\n— ${r.model} · ${fmt(r.cost.inputTokens)} in / ${fmt(r.cost.outputTokens)} out · ${usd(r.cost.claudeUsd)}`;
+  } catch (e) {
+    $("brief").textContent = e.message;
+  } finally { $("briefBtn").disabled = false; }
+});
+
+getJSON("/api/config").then((c) => {
+  window.AI = c.ai;
+  if (!c.ai) $("brief").textContent = "Set GROQ_API_KEY or ANTHROPIC_API_KEY on the server to enable AI briefs.";
+}).catch(() => {});
+renderCost();
+
+// ---------- Problem match mode ----------
+const PART_LABELS = { semantic: "Meaning", lexical: "Keywords", impact: "Impact" };
+
+function matchCard(p) {
+  const tier = p.score >= 70 ? "hi" : p.score >= 45 ? "mid" : "lo";
+  const parts = Object.entries(p.parts).map(([k, v]) =>
+    `<span>${PART_LABELS[k]}</span><div class="bar"><i style="width:${v}%"></i></div><span>${v}</span>`).join("");
+  const authors = p.authors.slice(0, 3).map((a) => esc(a.name)).join(", ") + (p.authors.length > 3 ? ` +${p.authors.length - 3}` : "");
+  return `<article class="card match">
+    <div class="score ${tier}"><b>${p.score}</b><span>relevance</span></div>
+    <div>
+      <div class="badges">
+        ${p.top1pct ? `<span class="b gold">Top 1%</span>` : p.top10pct ? `<span class="b gold">Top 10%</span>` : ""}
+        ${p.oa ? `<span class="b good">Open access</span>` : ""}
+        ${p.retracted ? `<span class="b warn">Retracted</span>` : ""}
+      </div>
+      <h3>${esc(p.title)}</h3>
+      <div class="authors">${authors} · ${esc(p.journal || p.type || "")} · ${esc(p.date?.slice(0, 4) || "")} · ${fmt(p.citations)} citations</div>
+      ${p.reason ? `<p class="reason">${esc(p.reason)}</p>` : ""}
+      ${p.evidence ? `<blockquote class="evidence ${p.evidenceVerified ? "" : "unverified"}">“${esc(p.evidence)}”
+        <span>${p.evidenceVerified ? "✓ quote found in abstract" : "⚠ quote not found in abstract; score discounted 25%"}</span></blockquote>` : ""}
+      ${p.covers?.length ? `<div class="chips">${p.covers.map((c) => `<code>${esc(c)}</code>`).join("")}</div>` : ""}
+      <div class="parts">${parts}</div>
+      ${p.abstract ? `<p class="abs clamp">${esc(p.abstract)}</p><button class="more" onclick="this.previousElementSibling.classList.toggle('clamp');this.textContent=this.textContent==='Show more'?'Show less':'Show more'">Show more</button>` : ""}
+      <div class="links" style="margin-top:6px">
+        ${p.pdf ? `<a href="${esc(p.pdf)}" target="_blank" rel="noopener">PDF</a>` : ""}
+        ${p.doi ? `<a href="${esc(p.doi)}" target="_blank" rel="noopener">DOI</a>` : ""}
+        <a href="https://openalex.org/${esc(p.id)}" target="_blank" rel="noopener">OpenAlex</a>
+      </div>
+    </div>
+  </article>`;
+}
+
+function renderTrace(r) {
+  $("trace").innerHTML = r.trace.map((t) => {
+    let extra = "";
+    if (t.detail?.perQuery) extra = `<div class="chips">${t.detail.queries.map((q, i) => `<code>${esc(q)} · ${fmt(t.detail.perQuery[i])}</code>`).join("")}</div><div class="m">${t.detail.uniqueCandidates} unique candidates pooled</div>`;
+    else if (t.detail?.kept != null) extra = `<div class="m">kept ${t.detail.kept}, dropped ${t.detail.dropped}</div>`;
+    const tok = t.tokens ? ` · ${fmt(t.tokens.input)} in / ${fmt(t.tokens.output)} out tokens` : "";
+    return `<li><b>${esc(t.step)}</b><div class="m">${esc(t.method)}</div>${extra}<div class="m">${(t.ms / 1000).toFixed(1)}s · ${usd(t.costUsd || 0)}${tok}</div></li>`;
+  }).join("") + `<li style="list-style:none;margin-left:-18px"><b>Total: ${usd(r.totalCostUsd)}</b></li>`;
+
+  const w = r.weights;
+  $("scoring").innerHTML = `
+    <p><b>Score = ${w.semantic * 100}% Meaning + ${w.lexical * 100}% Keywords + ${w.impact * 100}% Impact</b></p>
+    <p><b>Meaning</b>: ${r.mode === "ai" ? `${esc(r.llm)} reads each abstract and rates how much it helps with your problem <i>as a whole</i> (0–100). Papers linking several of your aspects score higher than papers covering only one. It must quote a supporting sentence from the abstract; if that quote isn't actually in the text, the score is cut by 25%.` : "share of your key concepts found in the title/abstract (no LLM key: set GROQ_API_KEY for real semantic scoring)."}</p>
+    <p><b>Keywords</b>: OpenAlex's text-relevance score, normalized per query, plus how many of the search queries found the paper and concept overlap.</p>
+    <p><b>Impact</b>: OpenAlex's citation percentile (field- and year-normalized), so a 2025 paper isn't punished for being new.</p>`;
+}
+
+$("mf").addEventListener("submit", async (e) => {
+  e.preventDefault();
+  $("mbtn").disabled = true;
+  $("understood").innerHTML = "";
+  $("mresults").innerHTML = `<p class="empty">Understanding your problem, searching OpenAlex, and scoring candidates…</p>`;
+  $("trace").innerHTML = `<li class="m">Running…</li>`;
+  try {
+    const r = await getJSON("/api/match", {
+      method: "POST", headers: { "content-type": "application/json" },
+      body: JSON.stringify({ problem: $("problem").value, from: $("mfrom").value }),
+    });
+    const u = r.understood;
+    $("understood").innerHTML = `<div class="card">
+      ${u.domain === "health" ? `<p class="notice">These are research papers, not a diagnosis. Symptoms like these should be checked by a doctor.</p>` : ""}
+      <div class="small">${r.mode === "ai" ? "We understood your problem as" : "Keyword mode (no LLM key)"}</div>
+      ${u.summary ? `<p style="margin:4px 0 2px"><b>${esc(u.summary)}</b></p>` : ""}
+      ${r.mode === "ai" && u.corrected !== $("problem").value.trim() ? `<p class="small" style="margin:0 0 8px">Spelling corrected: “${esc(u.corrected)}”</p>` : ""}
+      <h5>Your words → research terms</h5>
+      <table class="map">${u.keyPhrases.map((k) => `<tr>
+        <td><q class="${k.verified ? "" : "unverified"}">${esc(k.quote)}</q></td><td>→</td>
+        <td><b>${esc(k.term)}</b>${k.synonyms.length ? `<span class="small"> · ${k.synonyms.map(esc).join(", ")}</span>` : ""}</td></tr>`).join("")}</table>
+      ${u.hypotheses.length ? `<h5>What could connect them</h5><ul class="hyp">${u.hypotheses.map((h) => `<li><b>${esc(h.name)}</b>: <span class="small">${esc(h.why)}</span></li>`).join("")}</ul>` : ""}
+      <h5>Searches run${u.domain && u.domain !== "any" ? ` · ${esc(u.domain)} domain only` : ""}</h5>
+      <div class="chips">${u.queries.map((q) => `<code title="${esc(q.intent)}">${esc(q.q)}</code>`).join("")}</div>
+    </div>`;
+    $("mresults").innerHTML = r.results.length ? r.results.map(matchCard).join("") : `<p class="empty">No related studies found. Try describing it differently.</p>`;
+    renderTrace(r);
+  } catch (err) {
+    $("mresults").innerHTML = `<p class="err">${esc(err.message)}</p>`;
+    $("trace").innerHTML = "";
+  } finally { $("mbtn").disabled = false; }
+});
+
+// ---------- Tabs ----------
+let searchedOnce = false;
+document.querySelectorAll(".tabs button").forEach((b) => b.addEventListener("click", () => {
+  const match = b.dataset.mode === "match";
+  document.querySelectorAll(".tabs button").forEach((x) => x.classList.toggle("on", x === b));
+  $("mf").hidden = !match; $("matchView").hidden = !match;
+  $("f").hidden = match; $("searchView").hidden = match;
+  if (!match && !searchedOnce) { searchedOnce = true; $("f").requestSubmit(); }
+}));
+</script>
+</body>
+</html>
